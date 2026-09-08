@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: inquiry-triage-db
+    environment:
+      POSTGRES_DB: inquiry_triage
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: dev1234
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
