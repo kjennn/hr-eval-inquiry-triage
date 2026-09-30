@@ -16,24 +16,11 @@ spring:
       hibernate:
         format_sql: true
     show-sql: true
+  # 정규화/검색/합성 3단계 모두 Claude(Anthropic) 하나만 사용합니다.
   ai:
-    openai:
-      api-key: ${OPENAI_API_KEY}
-      embedding:
-        options:
-          model: text-embedding-3-small
-    vectorstore:
-      pgvector:
-        index-type: HNSW
-        distance-type: COSINE_DISTANCE
-        dimensions: 1536
     anthropic:
       api-key: ${CLAUDE_API_KEY}
       chat:
         options:
           model: claude-sonnet-4-6
           temperature: 0.2
-
-claude:
-  api-key: ${CLAUDE_API_KEY}
-  model: claude-sonnet-4-6
