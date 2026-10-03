@@ -1,5 +1,14 @@
 # HR 평가시스템 문의 자동 트리아지 & RAG 어시스턴트
 
+- 메인 화면
+<img width="2202" height="1628" alt="image" src="https://github.com/user-attachments/assets/51d77a4a-23ab-4aeb-bbf8-aef68ca563dc" />
+
+- 상세 화면
+- 처리 실행을 통해 문의 정규화 +  키워드 검색 + 답변초안 생성
+- 메뉴얼 업데이트 이후 재처리 진행시 다시 진행
+<img width="2226" height="1520" alt="image" src="https://github.com/user-attachments/assets/45762528-ac25-4e8d-9f22-54f0b8a22963" />
+
+
 ## 왜 만들었나
 HR 평가시스템(성과/역량/다면/종합평가)을 여러 고객사(B2B SaaS)에 운영하다 보면
 "오류인지 단순 문의인지", "어떤 평가 유형 건인지"를 담당자가 문의 원문을 읽고
