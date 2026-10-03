@@ -1,4 +1,4 @@
-# HR 평가시스템 문의 자동 트리아지 & RAG 어시스턴트
+# HR 평가시스템 문의 자동 트리아지
 
 - 메인 화면
 <img width="2202" height="1628" alt="image" src="https://github.com/user-attachments/assets/51d77a4a-23ab-4aeb-bbf8-aef68ca563dc" />
