@@ -8,6 +8,15 @@
 - 메뉴얼 업데이트 이후 재처리 진행시 다시 진행
 <img width="2226" height="1520" alt="image" src="https://github.com/user-attachments/assets/45762528-ac25-4e8d-9f22-54f0b8a22963" />
 
+---
+
+- 메뉴얼 관리
+  
+<img width="2204" height="1070" alt="image" src="https://github.com/user-attachments/assets/164eb319-f13d-4571-911d-4eb5e511d539" />
+
+- 메뉴얼 수정
+<img width="1080" height="1133" alt="image" src="https://github.com/user-attachments/assets/b56aa5da-25d3-44cd-893c-937cf269b7f4" />
+
 
 ## 왜 만들었나
 HR 평가시스템(성과/역량/다면/종합평가)을 여러 고객사(B2B SaaS)에 운영하다 보면
