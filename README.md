@@ -33,13 +33,16 @@ HR 평가시스템(성과/역량/다면/종합평가)을 여러 고객사(B2B Sa
 - ✅ 매뉴얼 검색: 임베딩 없이 평가유형 필터 + 키워드 매칭으로 관련 조항 검색
 - ✅ Claude 답변 합성: 분류 결과 + 검색된 매뉴얼을 근거로 답변 초안 생성
 - ✅ 고객사별/평가유형별 집계 통계 API
-- ✅ Next.js 프론트엔드: 문의 등록 폼, 목록/상세(처리 결과 전체) 보기, 처리 실행 버튼
+- ✅ 매뉴얼 관리 API: 매뉴얼 조회/등록/수정/삭제 (`/api/manuals`)
+- ✅ Next.js 프론트엔드: 문의 등록 폼, 목록/상세(처리 결과 전체) 보기, 처리 실행 버튼,
+  매뉴얼 관리 화면(`/manuals`: 추가/수정/삭제)
 
 ## 무엇을 하는가 (파이프라인)
 1. 자유 형식 문의 텍스트 등록 (`POST /api/inquiries`)
 2. `POST /api/inquiries/{id}/process` 호출 시 3단계가 순서대로 실행됨:
    1. **정규화** — Claude가 오류/문의 여부, 평가유형, 핵심증상, 검색 키워드 추출
-   2. **검색** — 같은 평가유형의 매뉴얼 중 키워드가 겹치는 상위 3건을 점수화해서 선택
+   2. **검색** — 같은 평가유형 + 공통(`COMMON`) 매뉴얼 중 키워드가 겹치는 상위 3건을 점수화해서 선택
+      (키워드 구절 전체 일치 3점, 구절을 공백으로 나눈 단어별 일치 1점)
    3. **합성** — Claude가 (분류 결과 + 검색된 매뉴얼)을 근거로 고객 응대용 답변 초안 생성
 3. 결과(`InquiryResult`)는 문의 1건당 1개로 유지되며, 재처리 시 새로 쌓지 않고 갱신됨
 
@@ -65,7 +68,13 @@ HR 평가시스템(성과/역량/다면/종합평가)을 여러 고객사(B2B Sa
 | POST | `/api/inquiries` | 문의 등록 |
 | POST | `/api/inquiries/{id}/process` | 정규화 → 검색 → 합성 파이프라인 실행 |
 | GET | `/api/stats` | 전체/고객사별/평가유형별 집계 통계 |
+| GET | `/api/manuals` | 매뉴얼 목록 조회 (평가유형, id 순) |
+| POST | `/api/manuals` | 매뉴얼 등록 (`evaluationType`, `title`, `content`, `keywords`) |
+| PUT | `/api/manuals/{id}` | 매뉴얼 수정 |
+| DELETE | `/api/manuals/{id}` | 매뉴얼 삭제 |
 
+> 매뉴얼은 검색 단계가 DB에서 매번 직접 읽기 때문에, 등록/수정/삭제 후 서버 재시작 없이
+> 다음 `/process` 호출부터 바로 반영됩니다. 잘못된 값은 400(`{"message": ...}`), 없는 id는 404를 반환합니다.
 ## 도메인 모델
 - **Tenant**: 고객사. 평가 정책 메모(`evaluationPolicyNote`)를 텍스트로 보유
 - **Inquiry**: 고객사에 속한 문의 원문. 상태는 `PENDING → PROCESSED`
@@ -124,7 +133,7 @@ demo/
 ├── build.gradle
 ├── docker-compose.yml    # PostgreSQL
 └── front/                # Next.js 프론트엔드
-    └── src/app/
+    └── src/app/          # / (문의 현황), /inquiries/[id] (상세), /manuals (매뉴얼 관리)
 ```
 
 ## 실행 방법
@@ -141,47 +150,46 @@ npm install
 npm run dev
 ```
 - `http://localhost:3000` 접속 → 문의 등록/목록/처리 실행 UI
+- `http://localhost:3000/manuals` → 매뉴얼 추가/수정/삭제 (메인 화면의 "+ 매뉴얼 추가하기" 버튼)
 - Anthropic API 키는 [console.anthropic.com](https://console.anthropic.com)에서 발급
   (Billing에 결제수단 등록 필요). **`application.yaml`에 직접 하드코딩하지 말고 항상
   환경변수로 주입하세요** — 이 파일은 git에 커밋되는 파일입니다.
 - 기본 접속 DB: `inquiry_triage` (user: `dev` / password: `dev1234`, `docker-compose.yml` 참고)
 
 ### 매뉴얼(`manual_doc`) 데이터 추가하기
-`data.sql`은 **최초 세팅 참고용**일 뿐, 서버를 껐다 켜도 자동 반영되지 않습니다
-(`spring.sql.init.mode`가 꺼져 있어서 외부 DB에는 실행되지 않고, 켜더라도
-`tenant`/`inquiry`가 중복 삽입되는 문제가 있어 계속 꺼둔 상태). 매뉴얼을 추가하고
-싶으면 psql이나 DBeaver 등으로 직접 넣으세요:
+**화면에서 추가하는 방법(권장)**: 메인 화면의 **"+ 매뉴얼 추가하기"** 버튼 또는 `/manuals`에서
+평가유형/제목/내용/검색 키워드(콤마 구분)를 입력해 저장·수정·삭제할 수 있습니다.
+
+**API로 추가하는 방법**:
 ```bash
-docker exec -it inquiry-triage-db psql -U dev -d inquiry_triage
+curl -X POST localhost:8080/api/manuals -H 'Content-Type: application/json' -d '{
+  "evaluationType": "COMMON",
+  "title": "제목",
+  "content": "본문",
+  "keywords": "키워드1, 키워드2"
+}'
 ```
-```sql
-INSERT INTO manual_doc (evaluation_type, title, content, keywords, created_at)
-VALUES ('COMMON', '제목', '본문', '키워드1, 키워드2', now());
-```
-`evaluation_type`은 반드시 `PERFORMANCE`, `COMPETENCY`, `MULTI_RATER`,
-`COMPREHENSIVE`, `COMMON` 중 하나여야 합니다 (Java enum과 이름이 정확히 일치해야 함).
+`evaluationType`은 `PERFORMANCE`, `COMPETENCY`, `MULTI_RATER`, `COMPREHENSIVE`, `COMMON` 중
+하나여야 합니다 (Java enum과 이름이 정확히 일치해야 함).
+
+> 참고: `data.sql`은 **최초 세팅 참고용**일 뿐 서버를 껐다 켜도 자동 반영되지 않습니다
+> (`spring.sql.init.mode`가 꺼져 있고, 켜면 `tenant`/`inquiry`가 중복 삽입됨).
+> 또 `data.sql`처럼 id를 직접 지정해 insert하면 id 시퀀스가 뒤처져 화면/API에서 등록할 때
+> `duplicate key` 오류가 날 수 있습니다. 그럴 땐 시퀀스를 맞춰주세요:
+> ```sql
+> SELECT setval(pg_get_serial_sequence('manual_doc', 'id'), (SELECT max(id) FROM manual_doc));
+> ```
 
 ## 트러블슈팅 기록
-- **`ddl-auto: update`가 기존 CHECK 제약을 안 고쳐줌**: `EvaluationType` enum에
-  `COMMON`을 나중에 추가했는데, 테이블이 그 이전에 이미 만들어져 있어서 DB의
-  `inquiry_result_evaluation_type_check` 제약이 `COMMON`을 막고 있었습니다.
-  `ddl-auto: update`는 새 컬럼/테이블은 만들어도 기존 제약조건은 건드리지
-  않는다는 걸 직접 겪었습니다. → 제약조건을 수동으로 `DROP`해서 해결.
 - **Claude 호출 단계에서만 500 에러**: `CLAUDE_API_KEY` 환경변수 없이 서버를
   띄우면, DB만 쓰는 조회 API는 멀쩡히 동작하다가 `/process`(Claude를 호출하는
   유일한 엔드포인트)에서만 500이 났습니다. 원인 파악을 쉽게 하려고
   `server.error.include-message: always`를 추가해 응답에 실제 에러 메시지가
   보이도록 했습니다 (운영 배포 전엔 꺼야 함).
-- **git에서 삭제된 파일이 로컬엔 남아있던 문제**: 로컬 디스크엔 `config/`,
-  `service/` 등 패키지가 있는데 원격(GitHub)엔 없던 적이 있었습니다. 원인은
-  과거 커밋에서 해당 파일들이 git 추적에서 `삭제`로 기록된 채 그대로
-  푸시되어 있었고, 삭제 이후 다시 커밋된 적이 없었던 것이었습니다 (`git show
-  --stat <commit>`으로 확인). 로컬에 파일이 "보인다"는 것과 "git에 커밋되어
-  있다"는 것은 별개라는 걸 확인한 사례입니다.
 
 ## 향후 개선 방향
 - 매뉴얼 데이터가 많아지면 임베딩 기반 검색으로 교체 검토
-- 매뉴얼 등록을 위한 관리자 API (지금은 psql로 직접 insert)
+- 매뉴얼 관리 화면/API에 관리자 인증·권한 추가 (현재는 누구나 접근 가능)
 - 필요하면 `src/`를 `backend/`로 정식 이동해 프론트/백엔드 구조 대칭으로 정리
 - 통계 대시보드 프론트엔드
 - 그룹웨어 등 타 업무 영역으로 확장 가능성 검토
