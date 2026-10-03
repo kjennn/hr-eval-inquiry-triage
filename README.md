@@ -1,4 +1,4 @@
-# HR 평가시스템 문의 자동 트리아지 & RAG 어시스턴트
+# HR 평가시스템 문의 자동 트리아지
 
 - 메인 화면
 <img width="2202" height="1628" alt="image" src="https://github.com/user-attachments/assets/51d77a4a-23ab-4aeb-bbf8-aef68ca563dc" />
@@ -7,6 +7,15 @@
 - 처리 실행을 통해 문의 정규화 +  키워드 검색 + 답변초안 생성
 - 메뉴얼 업데이트 이후 재처리 진행시 다시 진행
 <img width="2226" height="1520" alt="image" src="https://github.com/user-attachments/assets/45762528-ac25-4e8d-9f22-54f0b8a22963" />
+
+---
+
+- 메뉴얼 관리
+  
+<img width="2204" height="1070" alt="image" src="https://github.com/user-attachments/assets/164eb319-f13d-4571-911d-4eb5e511d539" />
+
+- 메뉴얼 수정
+<img width="1080" height="1133" alt="image" src="https://github.com/user-attachments/assets/b56aa5da-25d3-44cd-893c-937cf269b7f4" />
 
 
 ## 왜 만들었나
