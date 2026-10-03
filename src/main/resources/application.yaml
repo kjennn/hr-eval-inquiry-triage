@@ -9,6 +9,8 @@ spring:
 #    init:
 #      mode: always
   jpa:
+    # 뷰 렌더링까지 세션(커넥션)을 붙잡지 않도록 끔. 지연 로딩이 필요한 조회는 fetch join으로 처리.
+    open-in-view: false
     defer-datasource-initialization: true
     hibernate:
       ddl-auto: update

@@ -65,6 +65,9 @@ public class InquiryNormalizeService {
     }
 
     private InquiryNormalizationResult parseJson(String raw) {
+        if (raw == null || raw.isBlank()) {
+            throw new IllegalStateException("Claude 응답이 비어 있습니다.");
+        }
         String cleaned = raw.replaceAll("```json|```", "").trim();
         try {
             return objectMapper.readValue(cleaned, InquiryNormalizationResult.class);

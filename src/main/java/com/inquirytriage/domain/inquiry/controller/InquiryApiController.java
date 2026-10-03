@@ -47,7 +47,7 @@ public class InquiryApiController {
 
     @GetMapping("/{id}")
     public InquiryDetailDto detail(@PathVariable Long id) {
-        Inquiry inquiry = inquiryRepository.findById(id)
+        Inquiry inquiry = inquiryRepository.findByIdWithTenant(id)
             .orElseThrow(() -> new IllegalArgumentException("문의 없음: " + id));
         InquiryResult result = inquiryResultRepository.findByInquiryId(id).orElse(null);
         return InquiryDetailDto.from(inquiry, result);
@@ -71,7 +71,7 @@ public class InquiryApiController {
     @PostMapping("/{id}/process")
     public InquiryDetailDto process(@PathVariable Long id) {
         InquiryResult result = inquiryProcessService.process(id);
-        Inquiry inquiry = inquiryRepository.findById(id)
+        Inquiry inquiry = inquiryRepository.findByIdWithTenant(id)
             .orElseThrow(() -> new IllegalArgumentException("문의 없음: " + id));
         return InquiryDetailDto.from(inquiry, result);
     }
