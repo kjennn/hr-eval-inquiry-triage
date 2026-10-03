@@ -6,6 +6,7 @@ import com.inquirytriage.domain.inquiry.repository.ManualDocRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
@@ -27,7 +28,11 @@ public class ManualSearchService {
     private final ManualDocRepository manualDocRepository;
 
     public List<ManualDoc> search(EvaluationType evaluationType, List<String> searchKeywords) {
-        List<ManualDoc> candidates = manualDocRepository.findByEvaluationType(evaluationType);
+        List<ManualDoc> candidates = new ArrayList<>(manualDocRepository.findByEvaluationType(evaluationType));
+        // 평가유형 전용 매뉴얼로 부족할 수 있어(예: 퇴사자 계정, HRM 동기화) 공통 매뉴얼도 후보에 포함합니다.
+        if (evaluationType != EvaluationType.COMMON) {
+            candidates.addAll(manualDocRepository.findByEvaluationType(EvaluationType.COMMON));
+        }
 
         if (searchKeywords == null || searchKeywords.isEmpty()) {
             return candidates.stream().limit(MAX_RESULTS).toList();
@@ -46,10 +51,22 @@ public class ManualSearchService {
         String haystack = (doc.getTitle() + " " + doc.getContent() + " " + doc.getKeywords())
             .toLowerCase();
 
+        // Claude가 뽑는 키워드는 "다면평가 대상자 업로드"처럼 구절인 경우가 많아서,
+        // 구절 전체가 매뉴얼에 그대로 있을 때만 점수를 주면 거의 매칭되지 않습니다.
+        // 구절 일치(가중치 3) + 구절을 공백으로 쪼갠 단어별 일치(가중치 1)로 점수화합니다.
         int score = 0;
         for (String keyword : keywords) {
-            if (keyword != null && !keyword.isBlank() && haystack.contains(keyword.toLowerCase().trim())) {
-                score++;
+            if (keyword == null || keyword.isBlank()) {
+                continue;
+            }
+            String phrase = keyword.toLowerCase().trim();
+            if (haystack.contains(phrase)) {
+                score += 3;
+            }
+            for (String token : phrase.split("\\s+")) {
+                if (token.length() >= 2 && haystack.contains(token)) {
+                    score++;
+                }
             }
         }
         return score;

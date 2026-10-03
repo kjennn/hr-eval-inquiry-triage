@@ -24,7 +24,7 @@ spring:
         options:
           model: claude-sonnet-4-6
           temperature: 0.2
-가
+
 # 로컬 개발 중에는 500 에러 원인을 응답 바디에서 바로 볼 수 있도록 노출합니다.
 # (운영 배포 전엔 반드시 always -> never/on_param 등으로 되돌리세요)
 server:
