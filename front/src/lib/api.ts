@@ -45,6 +45,15 @@ export interface InquiryDetail {
   result: InquiryResult | null;
 }
 
+export interface ManualDoc {
+  id: number;
+  evaluationType: EvaluationType;
+  title: string;
+  content: string;
+  keywords: string | null;
+  createdAt: string;
+}
+
 export interface Stats {
   totalCount: number;
   errorCount: number;

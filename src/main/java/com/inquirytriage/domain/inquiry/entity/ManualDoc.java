@@ -46,4 +46,12 @@ public class ManualDoc {
         this.keywords = keywords;
         this.createdAt = LocalDateTime.now();
     }
+
+    // 관리자 화면에서 매뉴얼 수정 시 사용 (createdAt은 유지)
+    public void update(EvaluationType evaluationType, String title, String content, String keywords) {
+        this.evaluationType = evaluationType;
+        this.title = title;
+        this.content = content;
+        this.keywords = keywords;
+    }
 }

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import InquiryBoard from "@/components/InquiryBoard";
 import TypeBadge from "@/components/TypeBadge";
 import { apiGet, type InquiryListItem, type Stats, type Tenant } from "@/lib/api";
@@ -33,8 +34,20 @@ export default async function HomePage() {
 
   return (
     <>
-      <h1 className="page-title">문의 현황</h1>
-      <p className="page-sub">고객사 문의를 AI가 분류하고 매뉴얼 기반 답변 초안을 만듭니다.</p>
+      <div className="d-flex flex-wrap justify-content-between align-items-start gap-2">
+        <div>
+          <h1 className="page-title">문의 현황</h1>
+          <p className="page-sub">고객사 문의를 AI가 분류하고 매뉴얼 기반 답변 초안을 만듭니다.</p>
+        </div>
+        <div className="d-flex gap-2">
+          <Link href="/manuals" className="btn-ios gray">
+            매뉴얼 관리
+          </Link>
+          <Link href="/manuals?new=1" className="btn-ios">
+            + 매뉴얼 추가하기
+          </Link>
+        </div>
+      </div>
 
       {stats && (
         <div className="stat-grid">
