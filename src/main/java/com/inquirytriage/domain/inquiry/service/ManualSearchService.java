@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * 벡터 임베딩 없이 "검색" 단계를 구현한 최소 버전.
@@ -28,20 +29,22 @@ public class ManualSearchService {
     private final ManualDocRepository manualDocRepository;
 
     public List<ManualDoc> search(EvaluationType evaluationType, List<String> searchKeywords) {
+        // 키워드가 없으면 어떤 매뉴얼도 근거로 넘기지 않으므로, DB 조회 전에 먼저 끝낸다.
+        if (searchKeywords == null || searchKeywords.isEmpty()) {
+            return List.of();
+        }
+
         List<ManualDoc> candidates = new ArrayList<>(manualDocRepository.findByEvaluationType(evaluationType));
         // 평가유형 전용 매뉴얼로 부족할 수 있어(예: 퇴사자 계정, HRM 동기화) 공통 매뉴얼도 후보에 포함합니다.
         if (evaluationType != EvaluationType.COMMON) {
             candidates.addAll(manualDocRepository.findByEvaluationType(EvaluationType.COMMON));
         }
 
-        if (searchKeywords == null || searchKeywords.isEmpty()) {
-            return candidates.stream().limit(MAX_RESULTS).toList();
-        }
-
         return candidates.stream()
             .map(doc -> new ScoredManual(doc, score(doc, searchKeywords)))
             .filter(scored -> scored.score() > 0)
-            .sorted(Comparator.comparingInt(ScoredManual::score).reversed())
+            .sorted(Comparator.comparingInt(ScoredManual::score).reversed()
+                .thenComparingLong(scored -> scored.doc().getId()))
             .limit(MAX_RESULTS)
             .map(ScoredManual::doc)
             .toList();
@@ -49,7 +52,7 @@ public class ManualSearchService {
 
     private int score(ManualDoc doc, List<String> keywords) {
         String haystack = (doc.getTitle() + " " + doc.getContent() + " " + doc.getKeywords())
-            .toLowerCase();
+            .toLowerCase(Locale.ROOT);
 
         // Claude가 뽑는 키워드는 "다면평가 대상자 업로드"처럼 구절인 경우가 많아서,
         // 구절 전체가 매뉴얼에 그대로 있을 때만 점수를 주면 거의 매칭되지 않습니다.
@@ -59,7 +62,7 @@ public class ManualSearchService {
             if (keyword == null || keyword.isBlank()) {
                 continue;
             }
-            String phrase = keyword.toLowerCase().trim();
+            String phrase = keyword.toLowerCase(Locale.ROOT).trim();
             if (haystack.contains(phrase)) {
                 score += 3;
             }

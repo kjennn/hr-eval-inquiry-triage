@@ -13,6 +13,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 /**
@@ -39,9 +40,10 @@ public class InquiryProcessService {
 
     public InquiryResult process(Long inquiryId) {
         // 읽기만 하고 바로 커넥션을 반환 (Repository 호출 단위 트랜잭션)
-        String rawContent = inquiryRepository.findById(inquiryId)
-            .orElseThrow(() -> new IllegalArgumentException("문의 없음: " + inquiryId))
-            .getRawContent();
+        Inquiry sourceInquiry = inquiryRepository.findByIdWithTenant(inquiryId)
+            .orElseThrow(() -> new IllegalArgumentException("문의 없음: " + inquiryId));
+        String rawContent = sourceInquiry.getRawContent();
+        String evaluationPolicyNote = sourceInquiry.getTenant().getEvaluationPolicyNote();
 
         // ---- 아래 Claude 호출 구간은 트랜잭션/커넥션을 잡지 않는다 ----
         InquiryNormalizationResult normalization = sanitize(inquiryId, normalizeService.normalize(rawContent));
@@ -53,7 +55,8 @@ public class InquiryProcessService {
             .map(ManualDoc::getTitle)
             .collect(Collectors.joining(", "));
 
-        String finalAnswer = answerSynthesisService.synthesize(rawContent, normalization, matchedManuals);
+        String finalAnswer = answerSynthesisService.synthesize(
+            rawContent, normalization, matchedManuals, evaluationPolicyNote);
         // -------------------------------------------------------------
 
         return transactionTemplate.execute(status ->
@@ -103,19 +106,22 @@ public class InquiryProcessService {
      * - searchKeywords가 null이거나 null 원소를 포함하면 제거합니다.
      */
     private InquiryNormalizationResult sanitize(Long inquiryId, InquiryNormalizationResult raw) {
+        if (raw == null) {
+            throw new AiResponseException("Claude 응답이 비어 있거나 JSON null입니다.");
+        }
         EvaluationType type = resolveEvaluationType(inquiryId, raw.evaluationType());
         List<String> keywords = raw.searchKeywords() == null
             ? List.of()
             : raw.searchKeywords().stream().filter(Objects::nonNull).toList();
 
-        return new InquiryNormalizationResult(
-            raw.tenantGuess(), raw.isError(), type.name(), raw.symptomSummary(), keywords);
+        String summary = raw.symptomSummary() == null ? "" : raw.symptomSummary().trim();
+        return new InquiryNormalizationResult(raw.tenantGuess(), raw.isError(), type.name(), summary, keywords);
     }
 
     private EvaluationType resolveEvaluationType(Long inquiryId, String rawType) {
         if (rawType != null) {
             try {
-                return EvaluationType.valueOf(rawType.trim().toUpperCase());
+                return EvaluationType.valueOf(rawType.trim().toUpperCase(Locale.ROOT));
             } catch (IllegalArgumentException ignored) {
                 // 아래에서 폴백 처리
             }

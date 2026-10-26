@@ -11,6 +11,8 @@ import java.util.Optional;
 public interface InquiryResultRepository extends JpaRepository<InquiryResult, Long> {
     Optional<InquiryResult> findByInquiryId(Long inquiryId);
 
+    List<InquiryResult> findAllByInquiryIdIn(List<Long> inquiryIds);
+
     // 통계 집계용: tenant까지 한 번에 fetch해서 N+1 방지
     @Query("select r from InquiryResult r join fetch r.inquiry i join fetch i.tenant t")
     List<InquiryResult> findAllWithInquiryAndTenant();
