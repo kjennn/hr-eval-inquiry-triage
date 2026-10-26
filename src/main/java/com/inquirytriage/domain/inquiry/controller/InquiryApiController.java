@@ -17,6 +17,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 // 기존 InquiryTestController(/api/inquiries/{id}/normalize-test)와는
 // 별개 클래스로, 프론트가 실제로 쓰는 CRUD + 파이프라인 실행 엔드포인트를 담당합니다.
@@ -32,10 +35,16 @@ public class InquiryApiController {
 
     @GetMapping
     public List<InquiryListItemDto> list() {
-        return inquiryRepository.findAllWithTenantOrderByReceivedAtDesc().stream()
+        var inquiries = inquiryRepository.findAllWithTenantOrderByReceivedAtDesc();
+        List<Long> inquiryIds = inquiries.stream().map(Inquiry::getId).toList();
+        Map<Long, InquiryResult> resultsByInquiryId = inquiryIds.isEmpty()
+            ? Map.of()
+            : inquiryResultRepository.findAllByInquiryIdIn(inquiryIds).stream()
+                .collect(Collectors.toMap(result -> result.getInquiry().getId(), Function.identity()));
+
+        return inquiries.stream()
             .map(inquiry -> {
-                InquiryResult result = inquiryResultRepository.findByInquiryId(inquiry.getId())
-                    .orElse(null);
+                InquiryResult result = resultsByInquiryId.get(inquiry.getId());
                 return InquiryListItemDto.from(
                     inquiry,
                     result == null ? null : result.isError(),
