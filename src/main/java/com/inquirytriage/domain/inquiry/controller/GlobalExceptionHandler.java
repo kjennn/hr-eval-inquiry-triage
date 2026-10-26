@@ -1,5 +1,6 @@
 package com.inquirytriage.domain.inquiry.controller;
 
+import com.inquirytriage.domain.inquiry.service.AiResponseException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -10,7 +11,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /**
  * 컨트롤러 공통 예외 처리. 응답 바디는 {@code {"message": "..."}} 형태로 통일하고,
- * 프론트(ProcessButton 등)가 이 message를 그대로 사용자에게 보여줍니다.
+ * 프론트가 이 message를 사용자에게 보여줍니다.
  */
 @Slf4j
 @RestControllerAdvice
@@ -39,10 +40,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(new ErrorResponse("요청 형식이 올바르지 않습니다. 평가유형 등 값을 확인해주세요."));
     }
 
-    // Claude 응답을 JSON으로 해석하지 못한 경우 등 (InquiryNormalizeService)
-    @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<ErrorResponse> handleBadAiResponse(IllegalStateException e) {
-        log.warn("AI 응답 처리 실패: {}", e.getMessage());
+    // Claude 응답이 비었거나 JSON으로 해석되지 않은 경우만 처리 (AiResponseException 전용).
+    // 그 외 IllegalStateException(Hibernate/Spring 등)은 아래 handleUnexpected로 가서 스택트레이스가 남는다.
+    // 메시지에는 응답 본문이 없고 위치/길이만 있으며, 원인 예외는 종류만 기록한다
+    // (Jackson 예외 메시지는 응답 본문 일부를 포함할 수 있어 스택트레이스째 찍지 않음).
+    @ExceptionHandler(AiResponseException.class)
+    public ResponseEntity<ErrorResponse> handleBadAiResponse(AiResponseException e) {
+        log.warn("AI 응답 처리 실패: {} (원인={})", e.getMessage(),
+            e.getCause() == null ? "-" : e.getCause().getClass().getSimpleName());
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
             .body(new ErrorResponse("AI 응답을 처리하지 못했습니다. 잠시 후 다시 시도해주세요."));
     }
@@ -52,6 +57,6 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleUnexpected(Exception e) {
         log.error("처리 중 예기치 못한 오류", e);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(new ErrorResponse("서버 처리 중 오류가 발생했습니다: " + e.getMessage()));
+            .body(new ErrorResponse("서버 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."));
     }
 }
